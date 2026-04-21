@@ -1,4 +1,6 @@
-﻿namespace ToDoList
+﻿using System.Runtime.CompilerServices;
+
+namespace ToDoList
 {
     public enum RazinaPrioriteta
     {
@@ -8,13 +10,15 @@
     }
    public class Zadatak
     {
+        public int Id { get; set; }
         public string Opis { get; set; }
         public DateTime Rok { get; set; }
         public bool JeDovrsen { get; set; }
         public RazinaPrioriteta Prioritet { get; set; }  
 
-        public Zadatak(string opis, DateTime rok, RazinaPrioriteta prioritet)
+        public Zadatak(int id, string opis, DateTime rok, RazinaPrioriteta prioritet)
         {
+            Id = id;
             Opis = opis;
             Rok = rok;
             JeDovrsen = false; 
@@ -25,10 +29,26 @@
     public class UpraviteljZadataka
     {
         private List<Zadatak> listaZadataka = new List<Zadatak>();
+        private int sljedeciId = 1;
 
-        public void DodajZadatak(Zadatak zadatak)
+        public void DodajZadatak(string opis, DateTime rok, RazinaPrioriteta prioritet)
         {
-            listaZadataka.Add(zadatak);
+            Zadatak novi = new Zadatak(sljedeciId++, opis, rok, prioritet);
+            listaZadataka.Add(novi);
+        }
+        private ConsoleColor DohvatiBojuPrioriteta(RazinaPrioriteta prioritet)
+        {
+            switch (prioritet)
+            {
+                case RazinaPrioriteta.Visok:
+                    return ConsoleColor.Red;
+                case RazinaPrioriteta.Srednji:
+                    return ConsoleColor.Yellow;
+                case RazinaPrioriteta.Nizak:
+                    return ConsoleColor.Gray;
+                default:
+                    return ConsoleColor.Gray;
+            }
         }
 
         public void IspisiSveZadatke()
@@ -39,72 +59,71 @@
                 return;
             }
 
+            var sortiranaLista = listaZadataka.OrderBy(Zadatak => Zadatak.Rok).ToList();
+
+
+
             Console.WriteLine("\n--- TVOJA TO-DO LISTA ---");
-           for(int i = 1; i <= listaZadataka.Count; i++)
+           for(int i = 0; i < sortiranaLista.Count; i++)
             {
-                Zadatak z = listaZadataka[i - 1];
+                Zadatak z = sortiranaLista[i];
 
-            
-                if(z.Rok < DateTime.Now && !z.JeDovrsen)
+                Console.ForegroundColor = DohvatiBojuPrioriteta(z.Prioritet);
+                string porukaRoka = "";
+                if (z.Rok.Date == DateTime.Today)
                 {
-                    Console.BackgroundColor = ConsoleColor.DarkRed;
+                    porukaRoka = " -- DANAS! 🔥";
                 }
-
-                if (z.Prioritet == RazinaPrioriteta.Visok)
+                else if (z.Rok.Date < DateTime.Today)
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                }
-                else if (z.Prioritet == RazinaPrioriteta.Srednji)
-                {
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                }
-                else
-                {
-                    Console.ForegroundColor = ConsoleColor.Gray;
+                    porukaRoka = " -- ROK PROŠAO! ⚠️";
                 }
                 string oznakaStatusa = z.JeDovrsen ? "[X]" : "[ ]";
-                Console.WriteLine($"{i}. {oznakaStatusa} [{z.Prioritet}] {z.Opis} (Rok: {z.Rok.ToShortDateString()})");
+                Console.WriteLine($"{z.Id}. {oznakaStatusa} [{z.Prioritet}] {z.Opis} (Rok: {z.Rok.ToShortDateString()}){porukaRoka}");
 
                 Console.ResetColor();
-
-
-               
+            }            
             }
-            
-            }
-
-            public int DohvatiBrojZadataka()
+       
+        public int DohvatiBrojZadataka()
             {
                 return listaZadataka.Count;
             }
 
 
-        public void OznaciKaoDovrsen(int broj)
+        public void OznaciKaoDovrsen(int idZaPretragu)
         {
-            if(broj< 1 ||broj > listaZadataka.Count)
+            Zadatak z = listaZadataka.Find(x => x.Id == idZaPretragu);
+
+
+
+            if(z != null)
             {
-                Console.WriteLine("nesipravan broj zadatka.");
+                z.JeDovrsen = true;
+                Console.WriteLine($"Zadtak `{z.Opis}` je oznacen kao zavrsen! ✅");
             }
             else
             {
-                int indeks = broj - 1;
-
-                listaZadataka[indeks].JeDovrsen = true;
-
-                Console.WriteLine($"Zadtak `{listaZadataka[indeks].Opis}` je oznacen kao zavrsen! ✅");
+                Console.WriteLine("Žao mi je, ne postoji zadatak s tim brojem. ❌");
             }
         }
 
 
-        public void IzbrisiZadatak(int broj)
+        public void IzbrisiZadatak(int idZaBrisanje)
         {
-            if(broj < 1 || broj > listaZadataka.Count)
-            {
-                Console.WriteLine("neispravan broj zadatka.");
-            }
+            Zadatak z = listaZadataka.Find(x => x.Id == idZaBrisanje);
 
-            listaZadataka.RemoveAt(broj - 1);
-            Console.WriteLine("zadatak izbrisan!");
+
+            if (z != null)
+            {
+                listaZadataka.Remove(z);
+                Console.WriteLine("Zadatak uspješno obrisan!");
+              
+            }
+            else
+            {
+                Console.WriteLine("Zadatak s tim brojem ne postoji.");
+            }
         }
         public bool JeLiListaPrazna()
         {
@@ -113,15 +132,13 @@
 
         public void SpremiUDatoteku()
         {
-            string putanja = "zadaci.txt";
             List<string> redci = new List<string>();
-
-            foreach(var z in listaZadataka)
+            foreach (Zadatak z in listaZadataka)
             {
-                string redak = $"{z.Opis}|{z.Rok:dd/MM/yyyy}|{z.Prioritet}|{z.JeDovrsen}";
-                redci.Add(redak);
+               
+                redci.Add($"{z.Id}|{z.Opis}|{z.Rok:dd/MM/yyyy}|{z.Prioritet}|{z.JeDovrsen}");
             }
-            File.WriteAllLines(putanja, redci);
+            File.WriteAllLines("zadaci.txt", redci);
         }
 
         public void UcitajIzDatoteke()
@@ -130,28 +147,48 @@
             if (!File.Exists(putanja)) return;
 
             string[] redci = File.ReadAllLines(putanja);
+            int najveciId = 0;
 
             foreach(string redak in redci)
             {
                 string[] dijelovi = redak.Split('|');
 
-                if(dijelovi.Length == 4)
+                if(dijelovi.Length == 5)
                 {
-                    string opis = dijelovi[0];
-                    DateTime rok;
-                    if (!DateTime.TryParse(dijelovi[1], out rok))
-                    {
-                        rok = DateTime.Now;
-                    }
-                    RazinaPrioriteta prioritet = (RazinaPrioriteta)Enum.Parse(typeof(RazinaPrioriteta), dijelovi[2]);
-                    bool dovrsen = bool.Parse(dijelovi[3]);
+                    int id = int.Parse(dijelovi[0]);
+                    string opis = dijelovi[1];
+                    DateTime rok = DateTime.Parse(dijelovi[2]);
+                    RazinaPrioriteta prioritet = (RazinaPrioriteta)Enum.Parse(typeof(RazinaPrioriteta), dijelovi[3]);
+                    bool dovrsen = bool.Parse(dijelovi[4]);
 
-                    Zadatak novi = new Zadatak(opis, rok, prioritet);
+                    Zadatak novi = new Zadatak(id, opis, rok, prioritet);
                     novi.JeDovrsen = dovrsen;
-
                     listaZadataka.Add(novi);
+
+                   
+                    if (id > najveciId) najveciId = id;
                 }
 
+            }
+            sljedeciId = najveciId + 1;
+        }
+
+        public void PretraziZadatke(string pojam)
+        {
+            var rezultati = listaZadataka.Where(z => z.Opis.ToLower().Contains(pojam.ToLower())).ToList();
+
+            if(rezultati.Count == 0)
+            {
+                Console.WriteLine($"nema zadataka koji sadrze: `{pojam}`");
+            }
+            else
+            {
+                Console.WriteLine($"--- Rezultati pretrage za: `{pojam}` ---");
+                foreach(var z in rezultati)
+                {
+                    string status = z.JeDovrsen ? "[X]" : "[ ]";
+                    Console.WriteLine($"{z.Id}. {status} {z.Opis}");
+                }
             }
         }
     }
@@ -175,6 +212,7 @@
                 Console.WriteLine("2. ispisi sve zadatke.");
                 Console.WriteLine("3. oznaci zadatak kao dovrsen.");
                 Console.WriteLine("4. izbrisi zadatak.");
+                Console.WriteLine("5. pretrazi zadatke.");
                 Console.WriteLine("0. izlaz.");
                 Console.Write("odaberi opciju:");
 
@@ -210,7 +248,7 @@
 
 
 
-                        upravitelj.DodajZadatak(new Zadatak(opis, rok, odabraniPrioritet));
+                        upravitelj.DodajZadatak(opis, rok, odabraniPrioritet);
                         Console.WriteLine("zadatak dodan!");
                         upravitelj.SpremiUDatoteku();
                         break;
@@ -221,33 +259,30 @@
                         }
                         else
                         {
-                            Console.WriteLine("\n--- TVOJI ZADACI ---");
+                          
                             upravitelj.IspisiSveZadatke();
                         }
                         break;
                         
                     case "3":
-                        int broj;
-
+                       
                         if(upravitelj.JeLiListaPrazna())
                         {
-                            Console.WriteLine("\nnema zadataka na listi.");
+                            Console.WriteLine("\nNema zadataka za označavanje.");
                             break;
                         }
 
-                        Console.WriteLine("unesi broj zadatka koji zelis oznaciti zavrsenim!");
-                        string brojInput = Console.ReadLine();
-
-                        while (!int.TryParse(brojInput, out  broj) || broj < 1 || broj > upravitelj.DohvatiBrojZadataka())
+                        Console.WriteLine("Unesi ID zadatka koji želiš označiti kao dovršen:");
+                       if(int.TryParse(Console.ReadLine(), out int idZaDovrsiti))
                         {
-                            Console.WriteLine($"Neispravan unos! Unesi broj od 1 do {upravitelj.DohvatiBrojZadataka()}:");
-                            brojInput = Console.ReadLine();
+                            upravitelj.OznaciKaoDovrsen(idZaDovrsiti);
+                            upravitelj.SpremiUDatoteku();
                         }
-                                                
-                        upravitelj.OznaciKaoDovrsen(broj);
-                        upravitelj.SpremiUDatoteku();
-
-                        break;
+                        else
+                        {
+                            Console.WriteLine("Neispravan unos! Unesi točan ID!");
+                        }
+                            break;
                     case "4":
                         int brojZaBrisanje;
                         if(upravitelj.JeLiListaPrazna())
@@ -256,16 +291,21 @@
                             break;
                         }
 
-                        Console.WriteLine("unesi broj tadatka koji zelis izbrsisati");
-                        string brojBrisanjeInput = Console.ReadLine();
-                        while(!int.TryParse(brojBrisanjeInput, out brojZaBrisanje) || brojZaBrisanje < 1 || brojZaBrisanje > upravitelj.DohvatiBrojZadataka())
+                        Console.WriteLine("unesi broj zadatka koji zelis izbrisati");
+                        int idZaBrisanje;
+                        while(!int.TryParse(Console.ReadLine(), out idZaBrisanje))
                         {
                             Console.WriteLine($"nesipravan unos! unesi broj od 1 do {upravitelj.DohvatiBrojZadataka()}:");
-                            brojBrisanjeInput = Console.ReadLine();
+                           
                         }
 
-                        upravitelj.IzbrisiZadatak(brojZaBrisanje);
+                        upravitelj.IzbrisiZadatak(idZaBrisanje);
                         upravitelj.SpremiUDatoteku();
+                        break;
+                    case "5":
+                        Console.WriteLine("unesi pojam za pretragu:");
+                        string pojam = Console.ReadLine();
+                        upravitelj.PretraziZadatke(pojam);
                         break;
 
                     case "0":
